@@ -37,15 +37,45 @@ BASE_URL = "https://rundeck.internal.domain.tld"
 # User editable variables END
 ##########
 
+#To the arguments handling
+import sys
+import getopt
+
 import socket
 from pygtail import Pygtail
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
+try: 
+  opts, args = getopt.getopt(sys.argv[1:],"hh:p:f:t:s:b:",["help="])
+except getopt.GetoptError:
+  print 'Try to use the help with the following command: summary-report.py -h'
+  sys.exit(2)
+
+for opt,arg in opts:
+  if opt == '-h':
+    print """summary-report.py has the following arguments options:
+      -p <production>
+      -f <sender email>
+      -t <recipients emails>
+      -s <smtp host>
+      -b <base url>
+    """
+    sys.exit()
+  elif opt == "-p":
+    PROJECT = arg
+  elif opt == "-f":
+    sender = arg
+  elif opt == "-t":
+    rcv = arg
+  elif opt == "-s":
+    smtp_username = arg
+  elif opt == "-b":
+    BASE_URL = arg
+
 LOG = "/var/log/rundeck/rundeck.executions.log"
 fail_count = 0
-
 
 msg = MIMEMultipart('alternative')
 msg['From'] = sender
