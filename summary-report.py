@@ -40,13 +40,22 @@ BASE_URL = "https://rundeck.internal.domain.tld"
 #To the arguments handling
 import sys
 import getopt
-
 import socket
 from pygtail import Pygtail
 import smtplib
+from datetime import datetime
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
+
+def addLog(log_message):  
+  global loggerName
+  var = "{}-{}\n".format(str(datetime.now())[:-7],log_message)
+  with open("summary-report.log", "a") as myfile:
+      myfile.write(var)
+  return
+
+addLog("Starting script")
 try: 
   opts, args = getopt.getopt(sys.argv[1:],"hh:p:f:t:s:b:",["help="])
 except getopt.GetoptError:
@@ -102,6 +111,7 @@ if jobs:
 # Send mail only if there are failures;
 # Remove this if conditional to send mail always
 if fail_count > 0:
+  addLog("Total jobs failed are {}".format(fail_count))
   msg['Subject'] = 'Rundeck summary: ' + str(fail_count) + ' jobs failed'
   part1 = MIMEText(mail_text, 'plain')
   part2 = MIMEText(mail_text, 'html')
@@ -113,3 +123,6 @@ if fail_count > 0:
   server.login(smtp_username, smtp_password)
   server.sendmail(sender, rcv, msg.as_string())
   server.quit()
+else :
+  addLog("No job failed")
+addLog("Quitting the script")
