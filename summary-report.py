@@ -71,8 +71,8 @@ for line in Pygtail(LOG):
                                   line.split()[1].strip(']').split(',')[0])
         job_name = ' '.join(line.split()[7:]).split('"')[1].strip('-/')
         execution_id = status.split(':')[0].strip('[')
-        link = LINK(execution_id)
-        failed_jobs.append(JOB(job_date, link, execution_id, job_name))
+        failed_jobs.append(
+            JOB(job_date, LINK(execution_id), execution_id, job_name))
 
 # Send mail only if there are failures;
 # Remove this if conditional to send mail always
