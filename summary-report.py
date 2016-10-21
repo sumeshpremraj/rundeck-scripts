@@ -8,78 +8,91 @@
     (the mail text is written expecting 3 hour interval, you can edit that)
 """
 
-##########
-# User editable variables BEGIN
-##########
-
-# Name of the Rundeck project for which you want reports, usually Production
-PROJECT = "Production"
-
-# The data-from user for email, ie. what the recipient sees in an email client
-sender = 'rundeck-reports@domain.com'
-
-# Recipients for the summary email
-rcv = ['team-devops@domain.com', 'team-devs@domain.com']
-
-# SMTP server to send mails from
-smtp_server = 'mail.domain.com'
-
-# SMTP authentication username - this can be different from the data-from specified above
-smtp_username = 'system-reports@domain.com'
-
-# SMTP authentication password
-smtp_password = 'goodstrongpassword'
-
-# This will be used in the job execution links in summary email, this can be IP or hostname
-BASE_URL = "https://rundeck.internal.domain.tld"
-
-##########
-# User editable variables END
-##########
-
-import socket
-from pygtail import Pygtail
-import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+from itertools import repeat
+from smtplib import SMTP
 
-LOG = "/var/log/rundeck/rundeck.executions.log"
-fail_count = 0
+from pygtail import Pygtail
 
+###############################################################################
+# User editable variables BEGIN
+###############################################################################
+
+# Name of the Rundeck project for which you want reports, usually Production
+PROJECT = 'Production'
+
+# The data-from user for email, ie. what the recipient sees in an email client
+SENDER = 'rundeck-reports@domain.com'
+
+# Recipients for the summary email
+RCV = ['team-devops@domain.com', 'team-devs@domain.com']
+
+# SMTP server to send mails from
+SMTP_SERVER = 'mail.domain.com'
+
+# SMTP authentication username:
+#   this can be different from the data-from specified above
+SMTP_USERNAME = 'system-reports@domain.com'
+
+# SMTP authentication password
+SMTP_PASSWORD = 'goodstrongpassword'
+
+# SMTP port
+SMTP_PORT = 587
+
+# This will be used in the job execution links in summary email,
+# this can be IP or hostname
+BASE_URL = 'https://rundeck.internal.domain.tld'
+
+###############################################################################
+# User editable variables END
+###############################################################################
+
+ERROR_MSGS = ('failed]', 'timedout]')
+NBSP = '&nbsp;'
+JOB = '{{}} {}<a href="{{}}">{{}}</a> {} {{}}<br/>'.format(
+    ' '.join(repeat(NBSP, 3)), ' '.join(repeat(NBSP, 9))).format
+LINK = '{}/project/{}/execution/show/{{}}'.format(BASE_URL, PROJECT).format
+LOG = '/var/log/rundeck/rundeck.executions.log'
 
 msg = MIMEMultipart('alternative')
-msg['From'] = sender
-msg['To'] = ", ".join(rcv)
+msg['From'] = SENDER
+msg['To'] = ', '.join(RCV)
 
-jobs = ''
-
+failed_jobs = []
 for line in Pygtail(LOG):
-  status = line.split()[4]
+    status = line.split()[4]
 
-  # Look for jobs that failed after retries, or timed out
-  # This will exclude jobs that succeed after a retry
-  if any(err_msg in status for err_msg in ("failed]", "timedout]")):
-    fail_count += 1
-    date = line.split()[0].strip("[") + " " + line.split()[1].strip("]").split(",")[0]
-    job_name = " ".join(line.split()[7:]).split("\"")[1].strip("-/")
-    execution_id = status.split(":")[0].strip("[")
-    link = BASE_URL + "/project/" + PROJECT + "/execution/show/" + execution_id
-    jobs += date + " &nbsp; &nbsp; &nbsp; " + '<a href=' + link + '>' + execution_id + '</a>' + " &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; " + job_name + "<br/>"
-
-if jobs:
-  mail_text = "List of jobs that failed in the last 3 hours (click on the execution ID below to view details of the failed job):<br/>" + '<p><strong>Time &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; Execution ID &nbsp; &nbsp; &nbsp; Job name</strong></p>' + jobs
+    # Look for jobs that failed after retries, or timed out
+    # This will exclude jobs that succeed after a retry
+    if any(err_msg in status for err_msg in ERROR_MSGS):
+        job_date = '{} {}'.format(line.split()[0].strip('['),
+                                  line.split()[1].strip(']').split(',')[0])
+        job_name = ' '.join(line.split()[7:]).split('"')[1].strip('-/')
+        execution_id = status.split(':')[0].strip('[')
+        link = LINK(execution_id)
+        failed_jobs.append(JOB(job_date, link, execution_id, job_name))
 
 # Send mail only if there are failures;
 # Remove this if conditional to send mail always
-if fail_count > 0:
-  msg['Subject'] = 'Rundeck summary: ' + str(fail_count) + ' jobs failed'
-  part1 = MIMEText(mail_text, 'plain')
-  part2 = MIMEText(mail_text, 'html')
-  msg.attach(part1)
-  msg.attach(part2)
+if failed_jobs:
+    mail_text = (
+        'List of jobs that failed in the last 3 hours (click on the executi'
+        'on ID below to view details of the failed job):<br/><p><strong>Tim'
+        'e {} Execution ID {} Job name</strong></p>{}'
+    ).format(' '.join(repeat(NBSP, 15)),
+             ' '.join(repeat(NBSP, 3)),
+             ''.join(failed_jobs))
 
-  server = smtplib.SMTP(smtp_server, 587)
-  server.starttls()
-  server.login(smtp_username, smtp_password)
-  server.sendmail(sender, rcv, msg.as_string())
-  server.quit()
+    msg['Subject'] = 'Rundeck summary: {} jobs failed'.format(len(failed_jobs))
+    part1 = MIMEText(mail_text, 'plain')
+    part2 = MIMEText(mail_text, 'html')
+    msg.attach(part1)
+    msg.attach(part2)
+
+    server = SMTP(SMTP_SERVER, SMTP_PORT)
+    server.starttls()
+    server.login(SMTP_USERNAME, SMTP_PASSWORD)
+    server.sendmail(SENDER, RCV, msg.as_string())
+    server.quit()
