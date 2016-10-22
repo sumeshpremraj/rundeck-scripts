@@ -117,12 +117,19 @@ if fail_count > 0:
   part2 = MIMEText(mail_text, 'html')
   msg.attach(part1)
   msg.attach(part2)
-
-  server = smtplib.SMTP(smtp_server, 587)
-  server.starttls()
-  server.login(smtp_username, smtp_password)
-  server.sendmail(sender, rcv, msg.as_string())
-  server.quit()
+  port_list = [587, 465, 25]
+  flag = True
+  index=0
+  while flag :
+    try  :
+      server = smtplib.SMTP(smtp_server, port_list[index])
+      server.starttls()
+      server.login(smtp_username, smtp_password)
+      server.sendmail(sender, rcv, msg.as_string())
+      server.quit()
+      flag=False
+    except :
+      index+=1
 else :
   addLog("No job failed")
 addLog("Quitting the script")
