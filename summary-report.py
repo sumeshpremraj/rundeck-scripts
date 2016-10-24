@@ -30,6 +30,9 @@ smtp_username = 'system-reports@domain.com'
 # SMTP authentication password
 smtp_password = 'goodstrongpassword'
 
+# Set default SMTP port
+smtp_port = 587
+
 # This will be used in the job execution links in summary email, this can be IP or hostname
 BASE_URL = "https://rundeck.internal.domain.tld"
 
@@ -57,7 +60,7 @@ def addLog(log_message):
 
 addLog("Starting script")
 try: 
-  opts, args = getopt.getopt(sys.argv[1:],"hh:p:f:t:s:b:",["help="])
+  opts, args = getopt.getopt(sys.argv[1:],"hh:p:f:t:s:b:g:",["help="])
 except getopt.GetoptError:
   print 'Try to use the help with the following command: summary-report.py -h'
   sys.exit(2)
@@ -82,6 +85,12 @@ for opt,arg in opts:
     smtp_username = arg
   elif opt == "-b":
     BASE_URL = arg
+  elif opt == "-g"
+    try:
+      smtp_port = int(arg)
+    except ValueError:
+      print("Option '-g' needs an integer as argument.")
+      sys.exit()
 
 LOG = "/var/log/rundeck/rundeck.executions.log"
 fail_count = 0
