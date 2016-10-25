@@ -15,16 +15,13 @@
 # Name of the Rundeck project for which you want reports, usually Production
 PROJECT = "Production"
 
-# The data-from user for email, ie. what the recipient sees in an email client
-sender = 'rundeck-reports@domain.com'
-
 # Recipients for the summary email
 rcv = ['team-devops@domain.com', 'team-devs@domain.com']
 
 # SMTP server to send mails from
 smtp_server = 'mail.domain.com'
 
-# SMTP authentication username - this can be different from the data-from specified above
+# SMTP authentication username, also the data-from user for email, ie. what the recipient sees in an email client
 smtp_username = 'system-reports@domain.com'
 
 # SMTP authentication password
@@ -50,7 +47,7 @@ import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
-try: 
+try:
   opts, args = getopt.getopt(sys.argv[1:],"hh:p:f:t:s:b:g:",["help="])
 except getopt.GetoptError:
   print 'Try to use the help with the following command: summary-report.py -h'
@@ -60,23 +57,20 @@ for opt,arg in opts:
   if opt == '-h':
     print """summary-report.py has the following arguments options:
       -p <production>
-      -f <sender email>
       -t <recipients emails>
-      -s <smtp host>
+      -s <smtp host/sender email>
       -b <base url>
     """
     sys.exit()
   elif opt == "-p":
     PROJECT = arg
-  elif opt == "-f":
-    sender = arg
   elif opt == "-t":
     rcv = arg
   elif opt == "-s":
     smtp_username = arg
   elif opt == "-b":
     BASE_URL = arg
-  elif opt == "-g"
+  elif opt == "-g":
     try:
       smtp_port = int(arg)
     except ValueError:
@@ -87,7 +81,7 @@ LOG = "/var/log/rundeck/rundeck.executions.log"
 fail_count = 0
 
 msg = MIMEMultipart('alternative')
-msg['From'] = sender
+msg['From'] = smtp_username
 msg['To'] = ", ".join(rcv)
 
 jobs = ''
@@ -120,5 +114,5 @@ if fail_count > 0:
   server = smtplib.SMTP(smtp_server, smtp_port)
   server.starttls()
   server.login(smtp_username, smtp_password)
-  server.sendmail(sender, rcv, msg.as_string())
+  server.sendmail(smtp_username, rcv, msg.as_string())
   server.quit()
