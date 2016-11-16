@@ -7,12 +7,15 @@
     Run this script as a cron at whatever interval you desire
     (the mail text is written expecting 3 hour interval, you can edit that)
 """
-
+#To the arguments handling
+import sys
+import getopt
+import socket
+import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from itertools import repeat
 from smtplib import SMTP
-
 from pygtail import Pygtail
 
 ###############################################################################
@@ -59,6 +62,45 @@ LOG = '/var/log/rundeck/rundeck.executions.log'
 msg = MIMEMultipart('alternative')
 msg['From'] = SENDER
 msg['To'] = ', '.join(RCV)
+
+try:
+  opts, args = getopt.getopt(sys.argv[1:],"hh:p:f:t:s:b:g:",["help="])
+except getopt.GetoptError:
+  print 'Try to use the help with the following command: summary-report.py -h'
+  sys.exit(2)
+
+for opt,arg in opts:
+  if opt == '-h':
+    print """summary-report.py has the following arguments options:
+      -p <production>
+      -t <recipients emails>
+      -s <smtp host/sender email>
+      -b <base url>
+    """
+    sys.exit()
+  elif opt == "-p":
+    PROJECT = arg
+  elif opt == "-t":
+    rcv = arg
+  elif opt == "-s":
+    smtp_username = arg
+  elif opt == "-b":
+    BASE_URL = arg
+  elif opt == "-g":
+    try:
+      smtp_port = int(arg)
+    except ValueError:
+      print("Option '-g' needs an integer as argument.")
+      sys.exit()
+
+LOG = "/var/log/rundeck/rundeck.executions.log"
+fail_count = 0
+
+msg = MIMEMultipart('alternative')
+msg['From'] = smtp_username
+msg['To'] = ", ".join(rcv)
+
+jobs = ''
 
 failed_jobs = []
 for line in Pygtail(LOG):
