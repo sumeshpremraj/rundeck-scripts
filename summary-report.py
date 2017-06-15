@@ -63,6 +63,15 @@ msg = MIMEMultipart('alternative')
 msg['From'] = SENDER
 msg['To'] = ', '.join(RCV)
 
+def addLog(log_message):  
+  global loggerName
+  var = "{}-{}\n".format(str(datetime.now())[:-7],log_message)
+  with open("summary-report.log", "a") as myfile:
+      myfile.write(var)
+  return
+
+addLog("Starting script")
+
 try:
   opts, args = getopt.getopt(sys.argv[1:],"hh:p:f:t:s:b:g:",["help="])
 except getopt.GetoptError:
@@ -118,23 +127,26 @@ for line in Pygtail(LOG):
 
 # Send mail only if there are failures;
 # Remove this if conditional to send mail always
-if failed_jobs:
-    mail_text = (
-        'List of jobs that failed in the last 3 hours (click on the executi'
-        'on ID below to view details of the failed job):<br/><p><strong>Tim'
-        'e {} Execution ID {} Job name</strong></p>{}'
-    ).format(' '.join(repeat(NBSP, 15)),
-             ' '.join(repeat(NBSP, 3)),
-             ''.join(failed_jobs))
-
-    msg['Subject'] = 'Rundeck summary: {} jobs failed'.format(len(failed_jobs))
-    part1 = MIMEText(mail_text, 'plain')
-    part2 = MIMEText(mail_text, 'html')
-    msg.attach(part1)
-    msg.attach(part2)
-
-    server = SMTP(SMTP_SERVER, SMTP_PORT)
-    server.starttls()
-    server.login(SMTP_USERNAME, SMTP_PASSWORD)
-    server.sendmail(SENDER, RCV, msg.as_string())
-    server.quit()
+if fail_count > 0:
+  addLog("Total jobs failed are {}".format(fail_count))
+  msg['Subject'] = 'Rundeck summary: ' + str(fail_count) + ' jobs failed'
+  part1 = MIMEText(mail_text, 'plain')
+  part2 = MIMEText(mail_text, 'html')
+  msg.attach(part1)
+  msg.attach(part2)
+  port_list = [587, 465, 25]
+  flag = True
+  index=0
+  while flag:
+    try:
+      server = smtplib.SMTP(smtp_server, port_list[index])
+      server.starttls()
+      server.login(smtp_username, smtp_password)
+      server.sendmail(sender, rcv, msg.as_string())
+      server.quit()
+      flag=False
+    except :
+      index+=1
+else :
+  addLog("No job failed")
+addLog("Quitting the script")
