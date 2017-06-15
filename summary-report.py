@@ -41,9 +41,6 @@ SMTP_USERNAME = 'system-reports@domain.com'
 # SMTP authentication password
 SMTP_PASSWORD = 'goodstrongpassword'
 
-# SMTP port
-SMTP_PORT = 587
-
 # This will be used in the job execution links in summary email,
 # this can be IP or hostname
 BASE_URL = 'https://rundeck.internal.domain.tld'
