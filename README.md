@@ -10,5 +10,4 @@ The required Python modules are listed in requirements.txt, so if you want to in
 
 `pip install -r requirements.txt`
 
-
-##As always, pull requests are welcome :)
+As always, pull requests are welcome :)
